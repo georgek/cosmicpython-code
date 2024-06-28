@@ -1,30 +1,11 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
-from typing import Optional, List, Set
+from typing import Optional
 
 
 class OutOfStock(Exception):
     pass
-
-
-def allocate(line: OrderLine, batches: List[Batch]) -> str:
-    try:
-        batch = next(b for b in sorted(batches) if b.can_allocate(line))
-        batch.allocate(line)
-        return batch.reference
-    except StopIteration:
-        raise OutOfStock(f"Out of stock for sku {line.sku}")
-
-
-class Product:
-    """ dummy implementation, fixme"""
-
-    def __init__(self, *args, **kwargs):
-        self.batches = kwargs.get("batches")
-
-    def allocate(self, line):
-        return allocate(line, self.batches)
 
 
 @dataclass(unsafe_hash=True)
@@ -34,13 +15,30 @@ class OrderLine:
     qty: int
 
 
+class Product:
+    def __init__(self, sku: str, batches: list[Batch], version_number: int = 0):
+        self.sku = sku
+        self.batches = batches
+        self.version_number = version_number
+
+    def allocate(self, line: OrderLine):
+        print(self.__dict__)
+        try:
+            batch = next(b for b in sorted(self.batches) if b.can_allocate(line))
+            batch.allocate(line)
+            self.version_number += 1
+            return batch.reference
+        except StopIteration:
+            raise OutOfStock(f"Out of stock for sku {line.sku}")
+
+
 class Batch:
     def __init__(self, ref: str, sku: str, qty: int, eta: Optional[date]):
         self.reference = ref
         self.sku = sku
         self.eta = eta
         self._purchased_quantity = qty
-        self._allocations = set()  # type: Set[OrderLine]
+        self._allocations = set()  # type: set[OrderLine]
 
     def __repr__(self):
         return f"<Batch {self.reference}>"
